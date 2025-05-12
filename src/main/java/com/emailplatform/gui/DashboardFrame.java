@@ -8,9 +8,13 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +31,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JViewport;
 import javax.swing.SwingUtilities;
 
 import com.emailplatform.dao.EmailDAO;
@@ -41,7 +46,7 @@ public class DashboardFrame extends JFrame {
     private JPanel contentPanel;
     private CardLayout cardLayout;
     private Map<String, JButton> navButtons = new HashMap<>();
-    private String[] sections = { "Compose", "Inbox", "Snoozed", "Sent", "Trash", "Spam", "Labels", "Logout" };
+    private String[] sections = { "Compose", "Inbox", "Sent", "Trash", "Spam", "Labels", "GetLogs", "Logout" };
 
     public DashboardFrame(User user) {
         this.currentUser = user;
@@ -55,6 +60,7 @@ public class DashboardFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1200, 700);
         setLocationRelativeTo(null);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         setLayout(new BorderLayout());
 
         JPanel sidebar = createSidebar();
@@ -65,7 +71,6 @@ public class DashboardFrame extends JFrame {
         contentPanel.setBackground(Color.WHITE);
         contentPanel.add(createSectionPanel("Compose"), "Compose");
         contentPanel.add(createSectionPanel("Inbox"), "Inbox");
-        contentPanel.add(createSectionPanel("Snoozed"), "Snoozed");
         contentPanel.add(createSectionPanel("Sent"), "Sent");
         contentPanel.add(createSectionPanel("Trash"), "Trash");
         contentPanel.add(createSectionPanel("Spam"), "Spam");
@@ -101,6 +106,8 @@ public class DashboardFrame extends JFrame {
             button.addActionListener(e -> {
                 if (section.equals("Logout")) {
                     handleLogout();
+                } else if (section.equals("GetLogs")) {
+                    handleGetLogs();
                 } else {
                     cardLayout.show(contentPanel, section);
                     highlightNavButton(section);
@@ -156,143 +163,680 @@ public class DashboardFrame extends JFrame {
     }
 
     private JPanel createSectionPanel(String section) {
+        JPanel panel;
         switch (section) {
             case "Compose":
-                return createComposePanel();
+                panel = createComposePanel();
+                break;
             case "Inbox":
-                return createInboxPanel();
-            case "Snoozed":
-                return createSnoozedPanel();
+                panel = createInboxPanel();
+                break;
             case "Sent":
-                return createSentPanel();
+                panel = createSentPanel();
+                break;
             case "Trash":
-                return createTrashPanel();
+                panel = createTrashPanel();
+                break;
             case "Spam":
-                return createSpamPanel();
+                panel = createSpamPanel();
+                break;
             case "Labels":
-                return createLabelsPanel();
+                panel = createLabelsPanel();
+                break;
             default:
-                JPanel panel = new JPanel();
+                panel = new JPanel();
                 panel.setBackground(Color.WHITE);
                 panel.setLayout(new BorderLayout());
                 JLabel label = new JLabel(section);
                 label.setFont(new Font("Segoe UI", Font.BOLD, 24));
                 label.setBorder(BorderFactory.createEmptyBorder(30, 30, 0, 0));
                 panel.add(label, BorderLayout.NORTH);
-                return panel;
         }
+        panel.setName(section); // Set the name for future reference
+        return panel;
     }
 
-    private JPanel createComposePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
-
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-        formPanel.setBackground(Color.WHITE);
-
-        JLabel toLabel = new JLabel("To:");
-        JTextField toField = new JTextField(30);
-        toField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        formPanel.add(toLabel);
-        formPanel.add(toField);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-
-        JLabel subjectLabel = new JLabel("Subject:");
-        JTextField subjectField = new JTextField(30);
-        subjectField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        formPanel.add(subjectLabel);
-        formPanel.add(subjectField);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-
-        JLabel bodyLabel = new JLabel("Message:");
-        JTextArea bodyArea = new JTextArea(10, 30);
-        bodyArea.setLineWrap(true);
-        bodyArea.setWrapStyleWord(true);
-        JScrollPane bodyScroll = new JScrollPane(bodyArea);
-        formPanel.add(bodyLabel);
-        formPanel.add(bodyScroll);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-
-        JButton sendButton = new JButton("Send");
-        sendButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        sendButton.addActionListener(e -> {
-            String recipient = toField.getText().trim();
-            String subject = subjectField.getText().trim();
-            String body = bodyArea.getText().trim();
-            if (recipient.isEmpty() || subject.isEmpty() || body.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please fill in all fields.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            try {
-                boolean sent = emailDAO.sendEmail(currentUser.getId(), recipient, subject, body);
-                if (sent) {
-                    JOptionPane.showMessageDialog(this, "Email sent successfully!", "Success",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    toField.setText("");
-                    subjectField.setText("");
-                    bodyArea.setText("");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to send email.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-        formPanel.add(sendButton);
-
-        panel.add(formPanel, BorderLayout.NORTH);
-        return panel;
+    // Helper to add a refresh button to a panel
+    private JPanel createPanelHeader(String title, String panelName) {
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setOpaque(false);
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setForeground(new Color(33, 120, 255));
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+        JButton refreshBtn = new JButton("Refresh");
+        refreshBtn.setBackground(new Color(33, 120, 255));
+        refreshBtn.setForeground(Color.WHITE);
+        refreshBtn.setFocusPainted(false);
+        refreshBtn.addActionListener(e -> refreshPanel(panelName));
+        headerPanel.add(refreshBtn, BorderLayout.EAST);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(32, 0, 24, 32));
+        return headerPanel;
     }
 
     // INBOX PANEL
     private JPanel createInboxPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
+        JPanel outerPanel = new JPanel(new GridBagLayout());
+        outerPanel.setBackground(new Color(245, 247, 250));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+        JPanel accentBar = new JPanel();
+        accentBar.setBackground(new Color(33, 120, 255));
+        accentBar.setPreferredSize(new Dimension(8, 1));
+        GridBagConstraints accentGbc = new GridBagConstraints();
+        accentGbc.gridx = 0;
+        accentGbc.gridy = 0;
+        accentGbc.gridheight = 5;
+        accentGbc.fill = GridBagConstraints.VERTICAL;
+        accentGbc.insets = new Insets(0, 0, 0, 24);
+        card.add(accentBar, accentGbc);
+
+        // Header with refresh button
+        JPanel headerPanel = createPanelHeader("Inbox", "Inbox");
+        GridBagConstraints headerGbc = new GridBagConstraints();
+        headerGbc.gridx = 1;
+        headerGbc.gridy = 0;
+        headerGbc.gridwidth = 2;
+        headerGbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(headerPanel, headerGbc);
+
         JPanel emailListPanel = new JPanel();
         emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
+        emailListPanel.setOpaque(false);
         JScrollPane scrollPane = new JScrollPane(emailListPanel);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        refreshInbox(emailListPanel);
-        return panel;
-    }
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        GridBagConstraints listGbc = new GridBagConstraints();
+        listGbc.gridx = 1;
+        listGbc.gridy = 1;
+        listGbc.gridwidth = 2;
+        listGbc.weightx = 1.0;
+        listGbc.weighty = 1.0;
+        listGbc.insets = new Insets(0, 0, 24, 32);
+        listGbc.fill = GridBagConstraints.BOTH;
+        card.add(scrollPane, listGbc);
 
-    private void refreshInbox(JPanel emailListPanel) {
-        emailListPanel.removeAll();
         try {
             List<Email> emails = emailDAO.getInboxEmails(currentUser.getEmail());
             for (Email email : emails) {
-                emailListPanel.add(createEmailPanel(email));
-                emailListPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+                JPanel row = createModernEmailRow(email, "inbox");
+                emailListPanel.add(row);
             }
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error loading emails: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            emailListPanel.add(new JLabel("Failed to load emails."));
         }
-        emailListPanel.revalidate();
-        emailListPanel.repaint();
+        outerPanel.add(card, gbc);
+        return outerPanel;
     }
 
-    private JPanel createEmailPanel(Email email) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEtchedBorder());
+    // TRASH PANEL
+    private JPanel createTrashPanel() {
+        JPanel outerPanel = new JPanel(new GridBagLayout());
+        outerPanel.setBackground(new Color(245, 247, 250));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+        JPanel accentBar = new JPanel();
+        accentBar.setBackground(new Color(33, 120, 255));
+        accentBar.setPreferredSize(new Dimension(8, 1));
+        GridBagConstraints accentGbc = new GridBagConstraints();
+        accentGbc.gridx = 0;
+        accentGbc.gridy = 0;
+        accentGbc.gridheight = 5;
+        accentGbc.fill = GridBagConstraints.VERTICAL;
+        accentGbc.insets = new Insets(0, 0, 0, 24);
+        card.add(accentBar, accentGbc);
+
+        // Header with refresh button
+        JPanel headerPanel = createPanelHeader("Trash", "Trash");
+        GridBagConstraints headerGbc = new GridBagConstraints();
+        headerGbc.gridx = 1;
+        headerGbc.gridy = 0;
+        headerGbc.gridwidth = 2;
+        headerGbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(headerPanel, headerGbc);
+
+        JPanel emailListPanel = new JPanel();
+        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
+        emailListPanel.setOpaque(false);
+        JScrollPane scrollPane = new JScrollPane(emailListPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        GridBagConstraints listGbc = new GridBagConstraints();
+        listGbc.gridx = 1;
+        listGbc.gridy = 1;
+        listGbc.gridwidth = 2;
+        listGbc.weightx = 1.0;
+        listGbc.weighty = 1.0;
+        listGbc.insets = new Insets(0, 0, 24, 32);
+        listGbc.fill = GridBagConstraints.BOTH;
+        card.add(scrollPane, listGbc);
+
+        try {
+            List<Email> emails = emailDAO.getTrashEmails(currentUser.getEmail());
+            for (Email email : emails) {
+                JPanel row = createModernEmailRow(email, "trash");
+                emailListPanel.add(row);
+            }
+        } catch (Exception ex) {
+            emailListPanel.add(new JLabel("Failed to load emails."));
+        }
+        outerPanel.add(card, gbc);
+        return outerPanel;
+    }
+
+    // SENT PANEL
+    private JPanel createSentPanel() {
+        JPanel outerPanel = new JPanel(new GridBagLayout());
+        outerPanel.setBackground(new Color(245, 247, 250));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+        JPanel accentBar = new JPanel();
+        accentBar.setBackground(new Color(33, 120, 255));
+        accentBar.setPreferredSize(new Dimension(8, 1));
+        GridBagConstraints accentGbc = new GridBagConstraints();
+        accentGbc.gridx = 0;
+        accentGbc.gridy = 0;
+        accentGbc.gridheight = 5;
+        accentGbc.fill = GridBagConstraints.VERTICAL;
+        accentGbc.insets = new Insets(0, 0, 0, 24);
+        card.add(accentBar, accentGbc);
+
+        // Header with refresh button
+        JPanel headerPanel = createPanelHeader("Sent", "Sent");
+        GridBagConstraints headerGbc = new GridBagConstraints();
+        headerGbc.gridx = 1;
+        headerGbc.gridy = 0;
+        headerGbc.gridwidth = 2;
+        headerGbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(headerPanel, headerGbc);
+
+        JPanel emailListPanel = new JPanel();
+        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
+        emailListPanel.setOpaque(false);
+        JScrollPane scrollPane = new JScrollPane(emailListPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        GridBagConstraints listGbc = new GridBagConstraints();
+        listGbc.gridx = 1;
+        listGbc.gridy = 1;
+        listGbc.gridwidth = 2;
+        listGbc.weightx = 1.0;
+        listGbc.weighty = 1.0;
+        listGbc.insets = new Insets(0, 0, 24, 32);
+        listGbc.fill = GridBagConstraints.BOTH;
+        card.add(scrollPane, listGbc);
+
+        try {
+            List<Email> emails = emailDAO.getSentEmails(currentUser.getEmail());
+            for (Email email : emails) {
+                JPanel row = createModernEmailRow(email, "sent");
+                emailListPanel.add(row);
+            }
+        } catch (Exception ex) {
+            emailListPanel.add(new JLabel("Failed to load emails."));
+        }
+        outerPanel.add(card, gbc);
+        return outerPanel;
+    }
+
+    // SPAM PANEL
+    private JPanel createSpamPanel() {
+        JPanel outerPanel = new JPanel(new GridBagLayout());
+        outerPanel.setBackground(new Color(245, 247, 250));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+        JPanel accentBar = new JPanel();
+        accentBar.setBackground(new Color(33, 120, 255));
+        accentBar.setPreferredSize(new Dimension(8, 1));
+        GridBagConstraints accentGbc = new GridBagConstraints();
+        accentGbc.gridx = 0;
+        accentGbc.gridy = 0;
+        accentGbc.gridheight = 5;
+        accentGbc.fill = GridBagConstraints.VERTICAL;
+        accentGbc.insets = new Insets(0, 0, 0, 24);
+        card.add(accentBar, accentGbc);
+
+        // Header with refresh button
+        JPanel headerPanel = createPanelHeader("Spam", "Spam");
+        GridBagConstraints headerGbc = new GridBagConstraints();
+        headerGbc.gridx = 1;
+        headerGbc.gridy = 0;
+        headerGbc.gridwidth = 2;
+        headerGbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(headerPanel, headerGbc);
+
+        JPanel emailListPanel = new JPanel();
+        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
+        emailListPanel.setOpaque(false);
+        JScrollPane scrollPane = new JScrollPane(emailListPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        GridBagConstraints listGbc = new GridBagConstraints();
+        listGbc.gridx = 1;
+        listGbc.gridy = 1;
+        listGbc.gridwidth = 2;
+        listGbc.weightx = 1.0;
+        listGbc.weighty = 1.0;
+        listGbc.insets = new Insets(0, 0, 24, 32);
+        listGbc.fill = GridBagConstraints.BOTH;
+        card.add(scrollPane, listGbc);
+
+        try {
+            List<Email> emails = emailDAO.getSpamEmails(currentUser.getEmail());
+            for (Email email : emails) {
+                JPanel row = createModernEmailRow(email, "spam");
+                emailListPanel.add(row);
+            }
+        } catch (Exception ex) {
+            emailListPanel.add(new JLabel("Failed to load emails."));
+        }
+        outerPanel.add(card, gbc);
+        return outerPanel;
+    }
+
+    // Modernized LABELS PANEL (with blue UI and working addLabel)
+    private JPanel createLabelsPanel() {
+        JPanel outerPanel = new JPanel(new GridBagLayout());
+        outerPanel.setBackground(new Color(245, 247, 250));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+        JPanel accentBar = new JPanel();
+        accentBar.setBackground(new Color(33, 120, 255));
+        accentBar.setPreferredSize(new Dimension(8, 1));
+        GridBagConstraints accentGbc = new GridBagConstraints();
+        accentGbc.gridx = 0;
+        accentGbc.gridy = 0;
+        accentGbc.gridheight = 5;
+        accentGbc.fill = GridBagConstraints.VERTICAL;
+        accentGbc.insets = new Insets(0, 0, 0, 24);
+        card.add(accentBar, accentGbc);
+
+        // Header with label creation and refresh
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setOpaque(false);
+        JLabel titleLabel = new JLabel("Labels");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setForeground(new Color(33, 120, 255));
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+
+        JPanel createLabelPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        createLabelPanel.setOpaque(false);
+        JTextField labelField = new JTextField(12);
+        JButton createLabelBtn = new JButton("Create Label");
+        createLabelBtn.setBackground(new Color(33, 120, 255));
+        createLabelBtn.setForeground(Color.WHITE);
+        createLabelBtn.setFocusPainted(false);
+        createLabelBtn.addActionListener(e -> {
+            String label = labelField.getText().trim();
+            if (!label.isEmpty()) {
+                try {
+                    if (emailDAO.addLabel(currentUser.getId(), label)) {
+                        JOptionPane.showMessageDialog(this, "Label created!", "Success",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        labelField.setText("");
+                        refreshPanel("Labels");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Label already exists or failed to create.", "Error",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        createLabelPanel.add(labelField);
+        createLabelPanel.add(createLabelBtn);
+        // Add refresh button
+        JButton refreshBtn = new JButton("Refresh");
+        refreshBtn.setBackground(new Color(33, 120, 255));
+        refreshBtn.setForeground(Color.WHITE);
+        refreshBtn.setFocusPainted(false);
+        refreshBtn.addActionListener(e -> refreshPanel("Labels"));
+        createLabelPanel.add(refreshBtn);
+        headerPanel.add(createLabelPanel, BorderLayout.EAST);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(32, 0, 24, 32));
+        GridBagConstraints headerGbc = new GridBagConstraints();
+        headerGbc.gridx = 1;
+        headerGbc.gridy = 0;
+        headerGbc.gridwidth = 2;
+        headerGbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(headerPanel, headerGbc);
+
+        // Label selection
+        JPanel labelListPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        labelListPanel.setOpaque(false);
+        try {
+            List<String> labels = emailDAO.getLabels(currentUser.getId());
+            for (String label : labels) {
+                JButton labelBtn = new JButton(label);
+                labelBtn.setBackground(new Color(230, 240, 255));
+                labelBtn.setForeground(new Color(33, 120, 255));
+                labelBtn.setFocusPainted(false);
+                labelBtn.addActionListener(e -> showEmailsForLabel(label));
+                labelListPanel.add(labelBtn);
+            }
+        } catch (Exception ex) {
+            labelListPanel.add(new JLabel("Failed to load labels."));
+        }
+        GridBagConstraints labelListGbc = new GridBagConstraints();
+        labelListGbc.gridx = 1;
+        labelListGbc.gridy = 1;
+        labelListGbc.gridwidth = 2;
+        labelListGbc.insets = new Insets(0, 0, 8, 32);
+        labelListGbc.anchor = GridBagConstraints.WEST;
+        card.add(labelListPanel, labelListGbc);
+
+        // Email list for selected label (default: all emails)
+        JPanel emailListPanel = new JPanel();
+        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
+        emailListPanel.setOpaque(false);
+        JScrollPane scrollPane = new JScrollPane(emailListPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        GridBagConstraints listGbc = new GridBagConstraints();
+        listGbc.gridx = 1;
+        listGbc.gridy = 2;
+        listGbc.gridwidth = 2;
+        listGbc.weightx = 1.0;
+        listGbc.weighty = 1.0;
+        listGbc.insets = new Insets(0, 0, 24, 32);
+        listGbc.fill = GridBagConstraints.BOTH;
+        card.add(scrollPane, listGbc);
+
+        try {
+            List<Email> emails = emailDAO.getInboxEmails(currentUser.getEmail());
+            for (Email email : emails) {
+                JPanel row = createModernEmailRowWithLabel(email);
+                emailListPanel.add(row);
+            }
+        } catch (Exception ex) {
+            emailListPanel.add(new JLabel("Failed to load emails."));
+        }
+        outerPanel.add(card, gbc);
+        return outerPanel;
+    }
+
+    // Modern row logic for all panels
+    private JPanel createModernEmailRow(Email email, String panelType) {
+        JPanel row = new JPanel(new GridBagLayout());
+        row.setBackground(Color.WHITE);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(235, 235, 235)),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+        row.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // Add hover effect
+        row.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                row.setBackground(new Color(245, 250, 255));
+            }
+
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                row.setBackground(Color.WHITE);
+            }
+
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                viewEmail(email);
+            }
+        });
+
+        // Sender info panel
+        JPanel senderPanel = new JPanel(new BorderLayout(8, 0));
+        senderPanel.setOpaque(false);
+
+        // Sender name/email
+        String senderEmail = "Unknown";
+        try {
+            // Get the sender's email based on the panel type
+            String senderEmailAddress;
+            if (panelType.equals("sent")) {
+                senderEmailAddress = currentUser.getEmail(); // For sent emails, sender is current user
+            } else {
+                senderEmailAddress = email.getRecipientEmail(); // For received emails, use recipient field
+            }
+
+            User sender = userDAO.getUserByEmail(senderEmailAddress);
+            if (sender != null) {
+                senderEmail = sender.getFullName() + " <" + sender.getEmail() + ">";
+            } else {
+                senderEmail = senderEmailAddress; // Fallback to just the email if user not found
+            }
+        } catch (Exception ex) {
+            senderEmail = "Unknown Sender";
+        }
+
+        JLabel senderLabel = new JLabel(senderEmail);
+        senderLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        senderLabel.setForeground(new Color(33, 33, 33));
+        senderPanel.add(senderLabel, BorderLayout.CENTER);
+
+        // Subject and preview panel
+        JPanel contentPanel = new JPanel(new BorderLayout(8, 4));
+        contentPanel.setOpaque(false);
+
+        // Subject
         JLabel subjectLabel = new JLabel(email.getSubject());
-        subjectLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        panel.add(subjectLabel, BorderLayout.WEST);
+        subjectLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        subjectLabel.setForeground(new Color(33, 33, 33));
+        contentPanel.add(subjectLabel, BorderLayout.NORTH);
+
+        // Preview
+        String preview = email.getBody().replaceAll("\n", " ").trim();
+        if (preview.length() > 60) {
+            preview = preview.substring(0, 60) + "...";
+        }
+        JLabel previewLabel = new JLabel(preview);
+        previewLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        previewLabel.setForeground(new Color(100, 100, 100));
+        contentPanel.add(previewLabel, BorderLayout.CENTER);
+
+        // Date panel
+        JPanel datePanel = new JPanel(new BorderLayout());
+        datePanel.setOpaque(false);
         JLabel dateLabel = new JLabel(email.getSentDate().toString());
-        panel.add(dateLabel, BorderLayout.EAST);
-        JLabel previewLabel = new JLabel(email.getBody().substring(0, Math.min(100, email.getBody().length())) + "...");
-        panel.add(previewLabel, BorderLayout.CENTER);
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton viewButton = new JButton("View");
-        JButton deleteButton = new JButton("Delete");
-        viewButton.addActionListener(e -> viewEmail(email));
-        deleteButton.addActionListener(e -> deleteEmail(email));
-        buttonPanel.add(viewButton);
-        buttonPanel.add(deleteButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        return panel;
+        dateLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        dateLabel.setForeground(new Color(120, 120, 120));
+        datePanel.add(dateLabel, BorderLayout.EAST);
+
+        // Action buttons panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        buttonPanel.setOpaque(false);
+
+        // Style for all buttons
+        Font buttonFont = new Font("Segoe UI", Font.PLAIN, 12);
+        Dimension buttonSize = new Dimension(100, 28);
+
+        if (panelType.equals("inbox")) {
+            // Add Mark as Spam button (yellow)
+            JButton spamBtn = createStyledButton("Spam", new Color(255, 193, 7), buttonFont, buttonSize);
+            spamBtn.addActionListener(e -> markAsSpam(email));
+            buttonPanel.add(spamBtn);
+
+            // Add Delete button
+            JButton deleteBtn = createStyledButton("Delete", new Color(220, 53, 69), buttonFont, buttonSize);
+            deleteBtn.addActionListener(e -> deleteEmail(email));
+            buttonPanel.add(deleteBtn);
+        } else if (panelType.equals("trash")) {
+            JButton restoreBtn = createStyledButton("Restore", new Color(40, 167, 69), buttonFont, buttonSize);
+            restoreBtn.addActionListener(e -> restoreEmail(email));
+            buttonPanel.add(restoreBtn);
+
+            JButton deleteForeverBtn = createStyledButton("Delete", new Color(220, 53, 69), buttonFont,
+                    buttonSize);
+            deleteForeverBtn.addActionListener(e -> deleteForeverEmail(email));
+            buttonPanel.add(deleteForeverBtn);
+        } else if (panelType.equals("sent")) {
+            JButton deleteBtn = createStyledButton("Delete", new Color(220, 53, 69), buttonFont, buttonSize);
+            deleteBtn.addActionListener(e -> deleteEmail(email));
+            buttonPanel.add(deleteBtn);
+        } else if (panelType.equals("spam")) {
+            JButton notSpamBtn = createStyledButton("Not Spam", new Color(40, 167, 69), buttonFont, buttonSize);
+            notSpamBtn.addActionListener(e -> restoreEmail(email));
+            buttonPanel.add(notSpamBtn);
+        }
+
+        // Layout the components
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0.2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 0, 16);
+        row.add(senderPanel, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.6;
+        gbc.insets = new Insets(0, 0, 0, 16);
+        row.add(contentPanel, gbc);
+
+        gbc.gridx = 2;
+        gbc.weightx = 0.1;
+        gbc.insets = new Insets(0, 0, 0, 16);
+        row.add(datePanel, gbc);
+
+        gbc.gridx = 3;
+        gbc.weightx = 0.1;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        row.add(buttonPanel, gbc);
+
+        return row;
+    }
+
+    private JButton createStyledButton(String text, Color bgColor, Font font, Dimension size) {
+        JButton button = new JButton(text);
+        button.setFont(font);
+        button.setBackground(bgColor);
+        button.setForeground(Color.WHITE);
+        button.setPreferredSize(size);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // Add hover effect
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor.darker());
+            }
+
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+
+    // Restore and Delete Forever logic for Trash/Spam
+    private void restoreEmail(Email email) {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to restore this email?",
+                "Restore Email",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                if (emailDAO.restoreEmail(email.getId())) {
+                    JOptionPane.showMessageDialog(this, "Email restored successfully", "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    // Refresh the correct panel
+                    if (email.isSpam()) {
+                        refreshPanel("Spam");
+                    } else {
+                        refreshPanel("Trash");
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to restore email.", "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void deleteForeverEmail(Email email) {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to permanently delete this email? This action cannot be undone.",
+                "Delete",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                if (emailDAO.deleteForever(email.getId())) {
+                    JOptionPane.showMessageDialog(this, "Email permanently deleted.", "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    refreshPanel("Trash"); // Refresh the trash panel
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to delete email.", "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private void viewEmail(Email email) {
@@ -337,188 +881,17 @@ public class DashboardFrame extends JFrame {
     private void deleteEmail(Email email) {
         try {
             if (emailDAO.moveToTrash(email.getId())) {
-                refreshInbox((JPanel) contentPanel.getComponent(1));
+                JOptionPane.showMessageDialog(this, "Email moved to trash successfully", "Success",
+                        JOptionPane.INFORMATION_MESSAGE);
+                refreshPanel("Inbox"); // Refresh the inbox panel
             } else {
-                JOptionPane.showMessageDialog(this, "Failed to delete email", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Failed to delete email", "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error deleting email: " + ex.getMessage(), "Error",
                     JOptionPane.ERROR_MESSAGE);
         }
-    }
-
-    // SNOOZED PANEL
-    private JPanel createSnoozedPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        JPanel emailListPanel = new JPanel();
-        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
-        JScrollPane scrollPane = new JScrollPane(emailListPanel);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        refreshSnoozedEmails(emailListPanel);
-        return panel;
-    }
-
-    private void refreshSnoozedEmails(JPanel emailListPanel) {
-        emailListPanel.removeAll();
-        try {
-            List<Email> emails = emailDAO.getSnoozedEmails(currentUser.getEmail());
-            for (Email email : emails) {
-                emailListPanel.add(createEmailPanel(email));
-                emailListPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error loading snoozed emails: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-        emailListPanel.revalidate();
-        emailListPanel.repaint();
-    }
-
-    // SENT PANEL
-    private JPanel createSentPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        JPanel emailListPanel = new JPanel();
-        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
-        JScrollPane scrollPane = new JScrollPane(emailListPanel);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        refreshSentEmails(emailListPanel);
-        return panel;
-    }
-
-    private void refreshSentEmails(JPanel emailListPanel) {
-        emailListPanel.removeAll();
-        try {
-            List<Email> emails = emailDAO.getSentEmails(currentUser.getEmail());
-            for (Email email : emails) {
-                emailListPanel.add(createSentEmailPanel(email));
-                emailListPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error loading sent emails: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-        emailListPanel.revalidate();
-        emailListPanel.repaint();
-    }
-
-    private JPanel createSentEmailPanel(Email email) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEtchedBorder());
-        JLabel subjectLabel = new JLabel(email.getSubject());
-        subjectLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        panel.add(subjectLabel, BorderLayout.WEST);
-        JLabel dateLabel = new JLabel(email.getSentDate().toString());
-        panel.add(dateLabel, BorderLayout.EAST);
-        JLabel previewLabel = new JLabel(email.getBody().substring(0, Math.min(100, email.getBody().length())) + "...");
-        panel.add(previewLabel, BorderLayout.CENTER);
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton viewButton = new JButton("View");
-        viewButton.addActionListener(e -> viewSentEmail(email));
-        buttonPanel.add(viewButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        return panel;
-    }
-
-    private void viewSentEmail(Email email) {
-        try {
-            JDialog dialog = new JDialog(this, "View Sent Email", true);
-            dialog.setSize(600, 400);
-            dialog.setLocationRelativeTo(this);
-            JPanel panel = new JPanel(new BorderLayout());
-            panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-            JPanel headerPanel = new JPanel(new GridLayout(4, 1, 5, 5));
-            headerPanel.add(new JLabel("From: " + currentUser.getFullName() + " <" + currentUser.getEmail() + ">"));
-            headerPanel.add(new JLabel("To: " + email.getRecipientEmail()));
-            headerPanel.add(new JLabel("Subject: " + email.getSubject()));
-            headerPanel.add(new JLabel("Date: " + email.getSentDate()));
-            panel.add(headerPanel, BorderLayout.NORTH);
-            JTextArea bodyArea = new JTextArea(email.getBody());
-            bodyArea.setEditable(false);
-            bodyArea.setLineWrap(true);
-            bodyArea.setWrapStyleWord(true);
-            JScrollPane scrollPane = new JScrollPane(bodyArea);
-            panel.add(scrollPane, BorderLayout.CENTER);
-            JButton closeButton = new JButton("Close");
-            closeButton.addActionListener(e -> dialog.dispose());
-            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-            buttonPanel.add(closeButton);
-            panel.add(buttonPanel, BorderLayout.SOUTH);
-            dialog.add(panel);
-            dialog.setVisible(true);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error viewing sent email: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    // TRASH PANEL
-    private JPanel createTrashPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        JPanel emailListPanel = new JPanel();
-        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
-        JScrollPane scrollPane = new JScrollPane(emailListPanel);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        refreshTrashEmails(emailListPanel);
-        return panel;
-    }
-
-    private void refreshTrashEmails(JPanel emailListPanel) {
-        emailListPanel.removeAll();
-        try {
-            List<Email> emails = emailDAO.getTrashEmails(currentUser.getEmail());
-            for (Email email : emails) {
-                emailListPanel.add(createEmailPanel(email));
-                emailListPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error loading trash emails: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-        emailListPanel.revalidate();
-        emailListPanel.repaint();
-    }
-
-    // SPAM PANEL
-    private JPanel createSpamPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        JPanel emailListPanel = new JPanel();
-        emailListPanel.setLayout(new BoxLayout(emailListPanel, BoxLayout.Y_AXIS));
-        JScrollPane scrollPane = new JScrollPane(emailListPanel);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        refreshSpamEmails(emailListPanel);
-        return panel;
-    }
-
-    private void refreshSpamEmails(JPanel emailListPanel) {
-        emailListPanel.removeAll();
-        try {
-            List<Email> emails = emailDAO.getSpamEmails(currentUser.getEmail());
-            for (Email email : emails) {
-                emailListPanel.add(createEmailPanel(email));
-                emailListPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error loading spam emails: " + ex.getMessage(), "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-        emailListPanel.revalidate();
-        emailListPanel.repaint();
-    }
-
-    // LABELS PANEL
-    private JPanel createLabelsPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        JLabel label = new JLabel("Labels");
-        label.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        label.setBorder(BorderFactory.createEmptyBorder(30, 30, 0, 0));
-        panel.add(label, BorderLayout.NORTH);
-        // TODO: Add label management UI and logic
-        return panel;
     }
 
     private void handleLogout() {
@@ -530,5 +903,324 @@ public class DashboardFrame extends JFrame {
                 this.dispose();
             });
         }
+    }
+
+    private void refreshPanel(String panelName) {
+        // Don't refresh if it's the Compose panel
+        if (panelName.equals("Compose")) {
+            return;
+        }
+
+        // Find the panel to refresh
+        Component[] components = contentPanel.getComponents();
+        for (Component comp : components) {
+            if (comp.getName() != null && comp.getName().equals(panelName)) {
+                contentPanel.remove(comp);
+                break;
+            }
+        }
+
+        // Create and add the new panel
+        JPanel newPanel = createSectionPanel(panelName);
+        newPanel.setName(panelName); // Set the name for future reference
+        contentPanel.add(newPanel, panelName);
+
+        // Show the new panel
+        cardLayout.show(contentPanel, panelName);
+
+        // Repaint and revalidate
+        contentPanel.revalidate();
+        contentPanel.repaint();
+    }
+
+    private JPanel createComposePanel() {
+        JPanel outerPanel = new JPanel(new GridBagLayout());
+        outerPanel.setBackground(new Color(245, 247, 250));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        // Card panel
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+        // Accent bar
+        JPanel accentBar = new JPanel();
+        accentBar.setBackground(new Color(33, 120, 255));
+        accentBar.setPreferredSize(new Dimension(8, 1));
+        GridBagConstraints accentGbc = new GridBagConstraints();
+        accentGbc.gridx = 0;
+        accentGbc.gridy = 0;
+        accentGbc.gridheight = 5;
+        accentGbc.fill = GridBagConstraints.VERTICAL;
+        accentGbc.insets = new Insets(0, 0, 0, 24);
+        card.add(accentBar, accentGbc);
+
+        // Title
+        JLabel titleLabel = new JLabel("Compose Email");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setForeground(new Color(33, 120, 255));
+        GridBagConstraints titleGbc = new GridBagConstraints();
+        titleGbc.gridx = 1;
+        titleGbc.gridy = 0;
+        titleGbc.gridwidth = 2;
+        titleGbc.insets = new Insets(32, 0, 24, 32);
+        titleGbc.anchor = GridBagConstraints.WEST;
+        card.add(titleLabel, titleGbc);
+
+        // To field
+        JTextField toField = new JTextField();
+        toField.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        toField.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                "To", 0, 0, new Font("Segoe UI", Font.PLAIN, 14), new Color(120, 120, 120)));
+        GridBagConstraints toGbc = new GridBagConstraints();
+        toGbc.gridx = 1;
+        toGbc.gridy = 1;
+        toGbc.weightx = 0.5;
+        toGbc.insets = new Insets(0, 0, 16, 8);
+        toGbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(toField, toGbc);
+
+        // Subject field
+        JTextField subjectField = new JTextField();
+        subjectField.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        subjectField
+                .setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                        "Subject", 0, 0, new Font("Segoe UI", Font.PLAIN, 14), new Color(120, 120, 120)));
+        GridBagConstraints subjectGbc = new GridBagConstraints();
+        subjectGbc.gridx = 2;
+        subjectGbc.gridy = 1;
+        subjectGbc.weightx = 0.5;
+        subjectGbc.insets = new Insets(0, 8, 16, 32);
+        subjectGbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(subjectField, subjectGbc);
+
+        // Message area
+        JTextArea bodyArea = new JTextArea();
+        bodyArea.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        bodyArea.setLineWrap(true);
+        bodyArea.setWrapStyleWord(true);
+        bodyArea.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                "Message", 0, 0, new Font("Segoe UI", Font.PLAIN, 14), new Color(120, 120, 120)));
+        JScrollPane bodyScroll = new JScrollPane(bodyArea);
+        bodyScroll.setBorder(BorderFactory.createEmptyBorder());
+        GridBagConstraints bodyGbc = new GridBagConstraints();
+        bodyGbc.gridx = 1;
+        bodyGbc.gridy = 2;
+        bodyGbc.gridwidth = 2;
+        bodyGbc.weightx = 1.0;
+        bodyGbc.weighty = 1.0;
+        bodyGbc.insets = new Insets(0, 0, 16, 32);
+        bodyGbc.fill = GridBagConstraints.BOTH;
+        card.add(bodyScroll, bodyGbc);
+
+        // Send button (floating bottom right)
+        JButton sendButton = new JButton("Send");
+        sendButton.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        sendButton.setBackground(new Color(33, 120, 255));
+        sendButton.setForeground(Color.WHITE);
+        sendButton.setFocusPainted(false);
+        sendButton.setBorder(BorderFactory.createEmptyBorder(12, 40, 12, 40));
+        sendButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        sendButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                sendButton.setBackground(new Color(25, 100, 220));
+            }
+
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                sendButton.setBackground(new Color(33, 120, 255));
+            }
+        });
+        sendButton.addActionListener(e -> {
+            String recipient = toField.getText().trim();
+            String subject = subjectField.getText().trim();
+            String body = bodyArea.getText().trim();
+            if (recipient.isEmpty() || subject.isEmpty() || body.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please fill in all fields.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            try {
+                boolean sent = emailDAO.sendEmail(currentUser.getId(), recipient, subject, body);
+                if (sent) {
+                    JOptionPane.showMessageDialog(this, "Email sent successfully!", "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    toField.setText("");
+                    subjectField.setText("");
+                    bodyArea.setText("");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to send email.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        GridBagConstraints sendBtnGbc = new GridBagConstraints();
+        sendBtnGbc.gridx = 2;
+        sendBtnGbc.gridy = 3;
+        sendBtnGbc.anchor = GridBagConstraints.SOUTHEAST;
+        sendBtnGbc.insets = new Insets(0, 8, 24, 32);
+        card.add(sendButton, sendBtnGbc);
+
+        // Add card to the center of the outer panel
+        outerPanel.add(card, gbc);
+        return outerPanel;
+    }
+
+    private void markAsSpam(Email email) {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to mark this email as spam?",
+                "Mark as Spam",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                if (emailDAO.markAsSpam(email.getId())) {
+                    JOptionPane.showMessageDialog(this,
+                            "Email marked as spam successfully",
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    refreshPanel("Inbox");
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "Failed to mark email as spam",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Error: " + ex.getMessage(),
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void refreshLabelEmails(String label) {
+        // For now, just refresh the Labels panel (you can add label-specific filtering
+        // later)
+        refreshPanel("Labels");
+    }
+
+    private JPanel createModernEmailRowWithLabel(Email email) {
+        JPanel row = createModernEmailRow(email, "labels");
+        // Add label assignment button
+        JButton assignLabelBtn = new JButton("Assign Label");
+        assignLabelBtn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        assignLabelBtn.setBackground(new Color(33, 120, 255));
+        assignLabelBtn.setForeground(Color.WHITE);
+        assignLabelBtn.setFocusPainted(false);
+        assignLabelBtn.addActionListener(e -> {
+            try {
+                List<String> labels = emailDAO.getLabels(currentUser.getId());
+                String label = (String) JOptionPane.showInputDialog(this, "Select label:", "Assign Label",
+                        JOptionPane.PLAIN_MESSAGE, null, labels.toArray(), labels.isEmpty() ? null : labels.get(0));
+                if (label != null) {
+                    if (emailDAO.isLabelAssignedToEmail(currentUser.getId(), email.getId(), label)) {
+                        JOptionPane.showMessageDialog(this, "Label already assigned to this email.", "Info",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } else if (emailDAO.addLabelToEmail(currentUser.getId(), email.getId(), label)) {
+                        JOptionPane.showMessageDialog(this, "Label assigned!", "Success",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        refreshPanel("Labels");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Failed to assign label.", "Error",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        row.add(assignLabelBtn);
+        return row;
+    }
+
+    private void handleGetLogs() {
+        try {
+            String fileName = "user_logs_" + currentUser.getEmail().replace("@", "_at_") + ".txt";
+            java.io.FileWriter writer = new java.io.FileWriter(fileName);
+            java.util.Scanner scanner = new java.util.Scanner(System.in);
+
+            // Write user information
+            writer.write("User Logs for: " + currentUser.getFullName() + " (" + currentUser.getEmail() + ")\n");
+            writer.write("Generated on: " + java.time.LocalDateTime.now() + "\n\n");
+
+            // Write email statistics
+            writer.write("Email Statistics:\n");
+            writer.write("----------------\n");
+            writer.write("Inbox Emails: " + emailDAO.getInboxEmails(currentUser.getEmail()).size() + "\n");
+            writer.write("Sent Emails: " + emailDAO.getSentEmails(currentUser.getEmail()).size() + "\n");
+            writer.write("Trash Emails: " + emailDAO.getTrashEmails(currentUser.getEmail()).size() + "\n");
+            writer.write("Spam Emails: " + emailDAO.getSpamEmails(currentUser.getEmail()).size() + "\n\n");
+
+            // Write labels
+            writer.write("Labels:\n");
+            writer.write("-------\n");
+            List<String> labels = emailDAO.getLabels(currentUser.getId());
+            for (String label : labels) {
+                writer.write("- " + label + "\n");
+            }
+
+            writer.close();
+            JOptionPane.showMessageDialog(this,
+                    "Logs have been saved to: " + fileName,
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error generating logs: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Add this method to get emails by label for the current user
+    private List<Email> getEmailsByLabel(String label) {
+        List<Email> result = new ArrayList<>();
+        try {
+            // Get all emails for the user (inbox, sent, trash, spam, etc. as needed)
+            List<Email> allEmails = emailDAO.getInboxEmails(currentUser.getEmail()); // You can expand this to include
+                                                                                     // sent, trash, etc. if needed
+            for (Email email : allEmails) {
+                if (emailDAO.isLabelAssignedToEmail(currentUser.getId(), email.getId(), label)) {
+                    result.add(email);
+                }
+            }
+        } catch (Exception ex) {
+            // Handle exception or return empty list
+        }
+        return result;
+    }
+
+    // Add this method to show only emails for the selected label in the Labels
+    // panel
+    private void showEmailsForLabel(String label) {
+        JPanel labelPanel = (JPanel) contentPanel.getComponent(contentPanel.getComponentCount() - 1); // Get the current
+                                                                                                      // Labels panel
+        JScrollPane scrollPane = null;
+        for (Component comp : ((JPanel) ((JPanel) labelPanel.getComponent(0)).getComponents()[0]).getComponents()) {
+            if (comp instanceof JScrollPane) {
+                scrollPane = (JScrollPane) comp;
+                break;
+            }
+        }
+        if (scrollPane == null)
+            return;
+        JPanel emailListPanel = (JPanel) ((JViewport) scrollPane.getViewport()).getView();
+        emailListPanel.removeAll();
+        List<Email> emails = getEmailsByLabel(label);
+        for (Email email : emails) {
+            JPanel row = createModernEmailRowWithLabel(email);
+            emailListPanel.add(row);
+        }
+        emailListPanel.revalidate();
+        emailListPanel.repaint();
     }
 }
