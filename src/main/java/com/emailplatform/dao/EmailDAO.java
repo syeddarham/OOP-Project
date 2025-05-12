@@ -17,9 +17,7 @@ import com.emailplatform.util.DatabaseConnection;
 
 public class EmailDAO {
 
-    // In-memory label storage: userId -> set of labels
     private static Map<Integer, Set<String>> userLabels = new HashMap<>();
-    // In-memory label assignments: emailId -> set of labels
     private static Map<Integer, Set<String>> emailLabels = new HashMap<>();
 
     public boolean sendEmail(int senderId, String recipientEmail, String subject, String body) throws SQLException {
@@ -211,48 +209,40 @@ public class EmailDAO {
         return null;
     }
 
-    // Add a label for a user
     public boolean addLabel(int userId, String label) {
         userLabels.putIfAbsent(userId, new HashSet<>());
         return userLabels.get(userId).add(label);
     }
 
-    // Get all labels for a user
     public List<String> getLabels(int userId) {
         Set<String> labels = userLabels.getOrDefault(userId, new HashSet<>());
         return new ArrayList<>(labels);
     }
 
-    // Delete a label for a user (and from all emails)
+
     public boolean deleteLabel(int userId, String label) {
         boolean removed = false;
         if (userLabels.containsKey(userId)) {
             removed = userLabels.get(userId).remove(label);
         }
-        // Remove from all emails
         for (Set<String> labels : emailLabels.values()) {
             labels.remove(label);
         }
         return removed;
     }
-
-    // Assign a label to an email for a user
     public boolean addLabelToEmail(int userId, int emailId, String label) {
         if (!userLabels.containsKey(userId) || !userLabels.get(userId).contains(label)) {
-            return false; // Label must exist for user
+            return false;
         }
         emailLabels.putIfAbsent(emailId, new HashSet<>());
         return emailLabels.get(emailId).add(label);
     }
-
-    // Remove a label from an email
     public boolean removeLabelFromEmail(int emailId, String label) {
         if (!emailLabels.containsKey(emailId))
             return false;
         return emailLabels.get(emailId).remove(label);
     }
 
-    // Check if a label is already assigned to an email for a user
     public boolean isLabelAssignedToEmail(int userId, int emailId, String label) {
         return emailLabels.containsKey(emailId) && emailLabels.get(emailId).contains(label);
     }

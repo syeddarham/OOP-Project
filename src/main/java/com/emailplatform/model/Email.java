@@ -31,7 +31,6 @@ public class Email {
         this.snoozeDate = snoozeDate;
     }
 
-    // Getters and Setters
     public int getId() {
         return id;
     }

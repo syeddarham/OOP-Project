@@ -47,18 +47,15 @@ public class LoginFrame extends JFrame {
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setLayout(new BorderLayout());
 
-        // Left panel with blue accent
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.setPreferredSize(new Dimension(600, 600));
         leftPanel.setBackground(new Color(51, 51, 51));
 
-        // Blue accent line panel
         JPanel accentPanel = new JPanel();
         accentPanel.setPreferredSize(new Dimension(7, 0));
         accentPanel.setBackground(new Color(33, 120, 255));
         leftPanel.add(accentPanel, BorderLayout.EAST);
 
-        // Logo panel
         JPanel logoPanel = new JPanel(new GridBagLayout());
         logoPanel.setBackground(new Color(51, 51, 51));
         JLabel logoLabel = new JLabel();
@@ -73,14 +70,10 @@ public class LoginFrame extends JFrame {
         leftPanel.add(logoPanel, BorderLayout.CENTER);
 
         add(leftPanel, BorderLayout.WEST);
-
-        // Card panel for forms
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
         cardPanel.setBackground(Color.WHITE);
         add(cardPanel, BorderLayout.CENTER);
-
-        // Login form
         JPanel loginPanel = new JPanel(new GridBagLayout());
         loginPanel.setBackground(Color.WHITE);
         GridBagConstraints gbc = new GridBagConstraints();
@@ -147,7 +140,6 @@ public class LoginFrame extends JFrame {
         signupPanel1.add(signupButton);
         loginPanel.add(signupPanel1, gbc);
 
-        // Signup form
         JPanel signupPanel = new JPanel(new GridBagLayout());
         signupPanel.setBackground(Color.WHITE);
         GridBagConstraints gbc2 = new GridBagConstraints();
@@ -244,7 +236,6 @@ public class LoginFrame extends JFrame {
         cardPanel.add(signupPanel, "Signup");
         cardLayout.show(cardPanel, "Login");
 
-        // Button actions
         signupButton.addActionListener(e -> cardLayout.show(cardPanel, "Signup"));
         smallLoginButton.addActionListener(e -> cardLayout.show(cardPanel, "Login"));
         loginButton.addActionListener(e -> handleLogin());

@@ -1,5 +1,4 @@
 package com.emailplatform.dao;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,9 +36,7 @@ public class UserDAO {
 
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(query)) {
-
             stmt.setString(1, email);
-
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return new User(
@@ -52,7 +49,6 @@ public class UserDAO {
         }
         return null;
     }
-
     public boolean registerUser(String email, String password, String fullName) throws SQLException {
         String query = "INSERT INTO users (email, password, full_name) VALUES (?, ?, ?)";
 
